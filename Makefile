@@ -12,7 +12,7 @@ LIBS = -lpthread
 
 .SUFFIXES: .c .o 
 
-all: server client output.cgi
+all: server client output.cgi stat_process
 
 server: $(SERVER_OBJS)
 	$(CC) $(CFLAGS) -o server $(SERVER_OBJS) $(LIBS)
@@ -23,8 +23,11 @@ client: $(CLIENT_OBJS)
 output.cgi: output.c
 	$(CC) $(CFLAGS) -o output.cgi output.c
 
+stat_process: stat_process.c
+	$(CC) $(CFLAGS) -lrt -o  stat_process stat_process.c 
+
 .c.o:
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 clean:
-	-rm -f $(SERVER_OBJS) $(CLIENT_OBJS) server client output.cgi
+	-rm -f $(SERVER_OBJS) $(CLIENT_OBJS) server client output.cgi stat_process
