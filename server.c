@@ -65,7 +65,7 @@ int get_full() {
 }
 
 void *worker(void *arg) {
-  printf("Worker %lu created\n", pthread_self());
+  // printf("Worker %lu created\n", pthread_self());
   while (1) {
     pthread_mutex_lock(&mu);
     // wait while no requests are in buffer
@@ -75,20 +75,27 @@ void *worker(void *arg) {
 
     // grab a connection
     int buff_i = get_full();
-    pthread_mutex_unlock(&mu);
-
-    // handle connection async
     int connfd = buffer[buff_i];
-    requestHandle(connfd);
-    Close(connfd);
-
-    // update buffers
-    pthread_mutex_lock(&mu);
     buffer[buff_i] = -1;
     is_full = 0;
     if (buffer[0] == -1) {
       is_empty = 1;
     }
+    pthread_mutex_unlock(&mu);
+
+    // handle connection async
+    printf("worker %lu accepted connection %d\n", pthread_self(), connfd);
+    requestHandle(connfd);
+    Close(connfd);
+    printf("handled connection %d\n", connfd);
+
+    // update buffers
+    pthread_mutex_lock(&mu);
+    // buffer[buff_i] = -1;
+    // is_full = 0;
+    // if (buffer[0] == -1) {
+    //   is_empty = 1;
+    // }
     pthread_cond_signal(&buff_not_full);
     pthread_mutex_unlock(&mu);
   }
@@ -142,8 +149,11 @@ int main(int argc, char *argv[])
     while (is_full == 1) {
       pthread_cond_wait(&buff_not_full, &mu);
     }
+    // printf("checkpoint 0\n");
 
     clientlen = sizeof(clientaddr);
+    // printf("checkpoint 1\n");
+
     connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
     // printf("accepted connection %d\n", connfd);
 
