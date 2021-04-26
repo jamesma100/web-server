@@ -78,9 +78,9 @@ void *worker(void *arg) {
     pthread_mutex_unlock(&mu);
 
     // handle connection async
-    // int connfd = buffer[buff_i];
-    // requestHandle(connfd);
-    // Close(connfd);
+    int connfd = buffer[buff_i];
+    requestHandle(connfd);
+    Close(connfd);
 
     // update buffers
     pthread_mutex_lock(&mu);
@@ -103,7 +103,11 @@ int main(int argc, char *argv[])
   struct sockaddr_in clientaddr;
 
   getargs(&port, &threads, &buff_len, argc, argv);
-
+  // check invalid arguments
+  if (port <= 2000 || buff_len <= 0 || threads <= 0) {
+    return 1;
+  }
+ 
   // initalize buffer
   buffer = malloc(buff_len * sizeof(int));
   for (int i = 0; i < buff_len; i++) {
@@ -141,10 +145,12 @@ int main(int argc, char *argv[])
 
     clientlen = sizeof(clientaddr);
     connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
-    requestHandle(connfd);
-    Close(connfd);
-    printf("accepted connection %d\n", connfd);
+    // printf("accepted connection %d\n", connfd);
 
+    // requestHandle(connfd);
+    // Close(connfd);
+    // printf("ended connection %d\n", connfd);
+    
     // 
     // CS537 (Part A): In general, don't handle the request in the main thread.
     // Save the relevant info in a buffer and have one of the worker threads 
@@ -169,4 +175,5 @@ int main(int argc, char *argv[])
 
   // free malloc'd bytes
   free(buffer);
+  return 0;
 }
