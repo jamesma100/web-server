@@ -20,6 +20,8 @@ pthread_cond_t buff_not_empty;
 pthread_cond_t buff_not_full;
 volatile int is_full;
 volatile int is_empty;
+int *buffer;
+int buffer_len;
 
 // CS537: Parse the new arguments too
 void getargs(int *port, int *threads, int *buffers, int argc, char *argv[])
@@ -33,14 +35,73 @@ void getargs(int *port, int *threads, int *buffers, int argc, char *argv[])
   *buffers = atoi(argv[3]);
 }
 
+// Traverse the input array from left to right and returns the index of the
+// first null slot in the array
+int get_empty() {
+  // int buff_len = buffer_len_one == 0 ? (int) sizeof(buffer) / sizeof(buffer[0]) : 1; 
+  for (int i = 0; i < buffer_len; i++) {
+    if (buffer[i] == -1) {
+      return i;
+    }
+  }
+
+  // should never hit here? 
+  printf("get_empty() was called when buffer array was full\n");
+  return -1;
+}
+
+// Traverse the input array from right to left and returns the index of the
+// first null slot in the array
+int get_full() {
+  // int buff_len = buffer_len_one == 0 ? (int) sizeof(buffer) / sizeof(buffer[0]) : 1; 
+  // printf("size of buffer is %d\n", (int) sizeof buffer);
+  // printf("size of buffer[0] is %d\n", (int) sizeof buffer[0]);
+  // printf("buff_len is %d\n", buff_len);
+  for (int i = buffer_len - 1; i >= 0; i--) {
+    if (buffer[i] != -1) {
+      return i;
+    }
+  }
+
+  // should never hit here? 
+  printf("get_full() was called when buffer array was empty\n");
+  return -1;
+}
+
 void *worker(void *arg) {
-  printf("Worker %lu created\n", pthread_self());
+  // printf("Worker %lu created\n", pthread_self());
   while (1) {
     pthread_mutex_lock(&mu);
     // wait while no requests are in buffer
     while (is_empty == 1) {
       pthread_cond_wait(&buff_not_empty, &mu);
     }
+
+    // grab a connection
+    int buff_i = get_full();
+    // printf("buff_i is %d\n", buff_i);
+    int connfd = buffer[buff_i];
+    // printf("connfd is %d\n", connfd);
+    buffer[buff_i] = -1;
+    is_full = 0;
+    if (buffer[0] == -1) {
+      is_empty = 1;
+    }
+    pthread_mutex_unlock(&mu);
+
+    // handle connection async
+    printf("worker %lu accepted connection %d\n", pthread_self(), connfd);
+    requestHandle(connfd);
+    Close(connfd);
+    printf("handled connection %d\n", connfd);
+
+    // update buffers
+    pthread_mutex_lock(&mu);
+    // buffer[buff_i] = -1;
+    // is_full = 0;
+    // if (buffer[0] == -1) {
+    //   is_empty = 1;
+    // }
     pthread_cond_signal(&buff_not_full);
     pthread_mutex_unlock(&mu);
   }
@@ -50,17 +111,30 @@ void *worker(void *arg) {
 
 int main(int argc, char *argv[])
 {
-  int listenfd, connfd, port, clientlen, threads, buffers;
+  int listenfd, connfd, port, clientlen, threads, buff_len;
   // char shm_name;
   struct sockaddr_in clientaddr;
 
-  getargs(&port, &threads, &buffers, argc, argv);
-  // int buffer[buffers];
+  getargs(&port, &threads, &buff_len, argc, argv);
+  // check invalid arguments
+  if (port <= 2000 || buff_len <= 0 || threads <= 0) {
+    return 1;
+  }
+  buffer_len = buff_len;
+ 
+  // initalize buffer
+  buffer = malloc(buff_len * sizeof(int));
+  // printf("main len is %d\n", buff_len);
+  for (int i = 0; i < buff_len; i++) {
+    buffer[i] = -1;
+  }
+
+  // initialize necessary variables + locks + cond
+  is_full = 0;
+  is_empty = 1;
   pthread_mutex_init(&mu, NULL);
   pthread_cond_init(&buff_not_empty, NULL);
   pthread_cond_init(&buff_not_full, NULL);
-  is_full = 0;
-  is_empty = 0;
 
   //
   // CS537 (Part B): Create & initialize the shared memory region...
@@ -83,17 +157,33 @@ int main(int argc, char *argv[])
     while (is_full == 1) {
       pthread_cond_wait(&buff_not_full, &mu);
     }
+    // printf("checkpoint 0\n");
 
     clientlen = sizeof(clientaddr);
-    connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
+    // printf("checkpoint 1\n");
 
+    connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
+    // printf("conn fd is %d\n", connfd);
+    // printf("accepted connection %d\n", connfd);
+
+    // requestHandle(connfd);
+    // Close(connfd);
+    // printf("ended connection %d\n", connfd);
+    
     // 
     // CS537 (Part A): In general, don't handle the request in the main thread.
     // Save the relevant info in a buffer and have one of the worker threads 
     // do the work. Also let the worker thread close the connection.
-    // 
-    requestHandle(connfd);
-    Close(connfd);
+
+    // Find an empty slot in the buffer array and put the connection there
+    int buff_i = get_empty();
+    buffer[buff_i] = connfd;
+    // printf("buffer 0 is %d\n", buffer[0]);
+    is_empty = 0;
+    if (buffer[buff_len] != -1) {
+      is_full = 1;
+    }
+
     pthread_cond_signal(&buff_not_empty);
     pthread_mutex_unlock(&mu);
   }
@@ -102,4 +192,8 @@ int main(int argc, char *argv[])
   pthread_mutex_destroy(&mu);
   pthread_cond_destroy(&buff_not_empty);
   pthread_cond_destroy(&buff_not_full);
+
+  // free malloc'd bytes
+  free(buffer);
+  return 0;
 }

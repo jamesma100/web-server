@@ -9,4 +9,5 @@ int main(int argc, char *argv[]) {
     printf("argument: %s\n", shm_name);
     printf("argument: %i\n", sleeptime_ms);
     printf("argument: %i\n", num_threads);
+    return 0;
 }
