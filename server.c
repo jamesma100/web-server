@@ -21,6 +21,7 @@ pthread_cond_t buff_not_full;
 volatile int is_full;
 volatile int is_empty;
 int *buffer;
+int buffer_len;
 
 // CS537: Parse the new arguments too
 void getargs(int *port, int *threads, int *buffers, int argc, char *argv[])
@@ -37,8 +38,8 @@ void getargs(int *port, int *threads, int *buffers, int argc, char *argv[])
 // Traverse the input array from left to right and returns the index of the
 // first null slot in the array
 int get_empty() {
-  int buff_len = (int) sizeof(buffer) / sizeof(buffer[0]); 
-  for (int i = 0; i < buff_len; i++) {
+  // int buff_len = buffer_len_one == 0 ? (int) sizeof(buffer) / sizeof(buffer[0]) : 1; 
+  for (int i = 0; i < buffer_len; i++) {
     if (buffer[i] == -1) {
       return i;
     }
@@ -52,8 +53,11 @@ int get_empty() {
 // Traverse the input array from right to left and returns the index of the
 // first null slot in the array
 int get_full() {
-  int buff_len = (int) sizeof(buffer) / sizeof(buffer[0]); 
-  for (int i = buff_len - 1; i >= 0; i--) {
+  // int buff_len = buffer_len_one == 0 ? (int) sizeof(buffer) / sizeof(buffer[0]) : 1; 
+  // printf("size of buffer is %d\n", (int) sizeof buffer);
+  // printf("size of buffer[0] is %d\n", (int) sizeof buffer[0]);
+  // printf("buff_len is %d\n", buff_len);
+  for (int i = buffer_len - 1; i >= 0; i--) {
     if (buffer[i] != -1) {
       return i;
     }
@@ -75,7 +79,9 @@ void *worker(void *arg) {
 
     // grab a connection
     int buff_i = get_full();
+    // printf("buff_i is %d\n", buff_i);
     int connfd = buffer[buff_i];
+    // printf("connfd is %d\n", connfd);
     buffer[buff_i] = -1;
     is_full = 0;
     if (buffer[0] == -1) {
@@ -114,9 +120,11 @@ int main(int argc, char *argv[])
   if (port <= 2000 || buff_len <= 0 || threads <= 0) {
     return 1;
   }
+  buffer_len = buff_len;
  
   // initalize buffer
   buffer = malloc(buff_len * sizeof(int));
+  // printf("main len is %d\n", buff_len);
   for (int i = 0; i < buff_len; i++) {
     buffer[i] = -1;
   }
@@ -155,6 +163,7 @@ int main(int argc, char *argv[])
     // printf("checkpoint 1\n");
 
     connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
+    // printf("conn fd is %d\n", connfd);
     // printf("accepted connection %d\n", connfd);
 
     // requestHandle(connfd);
@@ -169,6 +178,7 @@ int main(int argc, char *argv[])
     // Find an empty slot in the buffer array and put the connection there
     int buff_i = get_empty();
     buffer[buff_i] = connfd;
+    // printf("buffer 0 is %d\n", buffer[0]);
     is_empty = 0;
     if (buffer[buff_len] != -1) {
       is_full = 1;
