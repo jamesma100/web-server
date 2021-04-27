@@ -10,6 +10,7 @@
 #include <fcntl.h>
 
 #include "shm-slot.h"
+#include <signal.h>
 
 // 
 // server.c: A very, very simple web server
@@ -29,6 +30,20 @@ volatile int is_full;
 volatile int is_empty;
 int *buffer;
 int buffer_len;
+slot_t *shm_ptr;
+int threads;
+int page_size;
+char *shm_name;
+// int cur_worker_slot = 0;
+
+void sigint_handler(int signal) {
+  printf("Captured signal SIGINT %d\n", signal);
+  // free shared memory
+  page_size = getpagesize();
+  munmap(shm_ptr, page_size);
+  shm_unlink(shm_name);
+  exit(0);
+}
 
 // CS537: Parse the new arguments too
 void getargs(int *port, int *threads, int *buffers, char **shm_name, int argc, char *argv[])
@@ -103,6 +118,7 @@ void *worker(void *arg) {
     Close(connfd);
     printf("handled connection %d\n", connfd);
 
+
     // update buffers
     pthread_mutex_lock(&mu);
     // buffer[buff_i] = -1;
@@ -112,6 +128,9 @@ void *worker(void *arg) {
     // }
     pthread_cond_signal(&buff_not_full);
     pthread_mutex_unlock(&mu);
+
+    // handle statistics
+    //int is_static = requestHandle(connfd);
   }
   return NULL;
 }
@@ -119,11 +138,12 @@ void *worker(void *arg) {
 
 int main(int argc, char *argv[])
 {
-  int listenfd, connfd, port, clientlen, threads, buff_len;
-  char *shm_name = NULL;
+  int listenfd, connfd, port, clientlen, buff_len;
+  
   struct sockaddr_in clientaddr;
 
   getargs(&port, &threads, &buff_len, &shm_name, argc, argv);
+  printf("args: %d, %d, %d, %s\n", port, threads, buff_len, shm_name);
   // check invalid arguments
   if (port <= 2000 || buff_len <= 0 || threads <= 0) {
     return 1;
@@ -147,7 +167,7 @@ int main(int argc, char *argv[])
   // CS537 (Part B): Create & initialize the shared memory region...
   //
   // initialize shared memory
-  int page_size = getpagesize();
+  page_size = getpagesize();
   int shm_fd = shm_open(shm_name, O_RDWR | O_CREAT, 0660);
   if (shm_fd < 0) {
     printf("shm_open exit with ret code -1\n");
@@ -155,20 +175,16 @@ int main(int argc, char *argv[])
   }
   
   ftruncate(shm_fd, page_size);
-  slot_t *shm_ptr = mmap(NULL, page_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+  shm_ptr = mmap(NULL, page_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
   
   if (shm_ptr == MAP_FAILED) {
     return 1;
   }
   printf("shared mem created\n");
-  int ret = munmap(shm_ptr, page_size);
-  if (ret != 0) {
-    return 1;
-  }
-  ret = shm_unlink(shm_name);
-  if (ret != 0) {
-    return 1;
-  }
+
+  // register signal handler
+  signal(SIGINT, sigint_handler);
+
   // 
   // CS537 (Part A): Create some threads...
   //
@@ -177,6 +193,10 @@ int main(int argc, char *argv[])
   pthread_t workers[threads];
   for (int i = 0; i < threads; i++) {
     pthread_create(&workers[i], NULL, worker, NULL);
+    // shm_ptr[i].tid = pthread_self();
+    // shm_ptr[i].static_req = 0;
+    // shm_ptr[i].dyanmic_req = 0;
+    // shm_ptr[i].total_req = 0;
   }
 
   listenfd = Open_listenfd(port);
@@ -226,3 +246,4 @@ int main(int argc, char *argv[])
   free(buffer);
   return 0;
 }
+

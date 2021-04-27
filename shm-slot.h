@@ -2,8 +2,10 @@
 #define _SHM_SLOT_H_
 
 typedef struct slot {
-    char str[100];
-    int num;
+    int tid;
+    int static_req;
+    int dyanmic_req;
+    int total_req;
 } slot_t;
 
 #endif
