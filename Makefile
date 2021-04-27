@@ -20,11 +20,11 @@ server: $(SERVER_OBJS)
 client: $(CLIENT_OBJS)
 	$(CC) $(CFLAGS) -o client $(CLIENT_OBJS) $(LIBS)
 
+stat_process: stat_process.c
+	$(CC) $(CFLAGS) -o stat_process stat_process.c $(LIBS)
+
 output.cgi: output.c
 	$(CC) $(CFLAGS) -o output.cgi output.c
-
-stat_process: stat_process.c
-	$(CC) $(CFLAGS)  -o  stat_process stat_process.c $(LIBS)
 
 .c.o:
 	$(CC) $(CFLAGS) -o $@ -c $<
