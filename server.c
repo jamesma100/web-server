@@ -1,8 +1,13 @@
 #include "helper.h"
 #include "request.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <pthread.h>
+
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 // 
 // server.c: A very, very simple web server
@@ -24,7 +29,7 @@ int *buffer;
 int buffer_len;
 
 // CS537: Parse the new arguments too
-void getargs(int *port, int *threads, int *buffers, int argc, char *argv[])
+void getargs(int *port, int *threads, int *buffers, char *shm_name, int argc, char *argv[])
 {
   if (argc != 5) {
     fprintf(stderr, "Usage: %s <port>\n", argv[0]);
@@ -33,6 +38,7 @@ void getargs(int *port, int *threads, int *buffers, int argc, char *argv[])
   *port = atoi(argv[1]);
   *threads = atoi(argv[2]);
   *buffers = atoi(argv[3]);
+  shm_name = argv[4];
 }
 
 // Traverse the input array from left to right and returns the index of the
@@ -112,10 +118,10 @@ void *worker(void *arg) {
 int main(int argc, char *argv[])
 {
   int listenfd, connfd, port, clientlen, threads, buff_len;
-  // char shm_name;
+  char *shm_name = NULL;
   struct sockaddr_in clientaddr;
 
-  getargs(&port, &threads, &buff_len, argc, argv);
+  getargs(&port, &threads, &buff_len, shm_name, argc, argv);
   // check invalid arguments
   if (port <= 2000 || buff_len <= 0 || threads <= 0) {
     return 1;
@@ -135,11 +141,26 @@ int main(int argc, char *argv[])
   pthread_mutex_init(&mu, NULL);
   pthread_cond_init(&buff_not_empty, NULL);
   pthread_cond_init(&buff_not_full, NULL);
-
+  
+  //printf("shm_fd: %i\n", shm_fd);    
+  //shm_fd++;
   //
   // CS537 (Part B): Create & initialize the shared memory region...
   //
-
+  // initialize shared memory
+  /*
+  int shm_fd = shm_open(shm_name, O_RDWR | O_CREAT, 0660);
+  if (shm_fd == -1) {
+    printf("shm_open exit with ret code -1\n");
+    return 1;
+  }
+*/ 
+  // int page_size = getpagesize();
+  // ftruncate(shm_fd, page_size);
+  // void* shm_ptr = mmap(NULL, page_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+  // //printf("shm_ptr: %s\n", (char*)shm_ptr);
+  // munmap(shm_ptr, page_size);
+  // shm_unlink(shm_name);
   // 
   // CS537 (Part A): Create some threads...
   //

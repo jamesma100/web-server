@@ -8,14 +8,14 @@ CLIENT_OBJS = client.o helper.o
 CC = gcc
 CFLAGS = -g -Werror -Wall -Wno-format-overflow -Wno-restrict
 
-LIBS = -lpthread 
+LIBS = -lpthread -lrt
 
 .SUFFIXES: .c .o 
 
 all: server client stat_process output.cgi
 
 server: $(SERVER_OBJS)
-	$(CC) $(CFLAGS) -o server $(SERVER_OBJS) $(LIBS)
+	$(CC) $(CFLAGS) -o server $(SERVER_OBJS) $(LIBS) 
 
 client: $(CLIENT_OBJS)
 	$(CC) $(CFLAGS) -o client $(CLIENT_OBJS) $(LIBS)
@@ -24,7 +24,7 @@ output.cgi: output.c
 	$(CC) $(CFLAGS) -o output.cgi output.c
 
 stat_process: stat_process.c
-	$(CC) $(CFLAGS) -lrt -o  stat_process stat_process.c 
+	$(CC) $(CFLAGS)  -o  stat_process stat_process.c $(LIBS)
 
 .c.o:
 	$(CC) $(CFLAGS) -o $@ -c $<
