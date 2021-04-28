@@ -92,17 +92,18 @@ int get_full() {
 }
 
 void *worker(void *arg) {
-  printf("Worker %lu created\n", pthread_self());
-  printf("slot: %i\n",cur_worker_slot);
-  shm_ptr[cur_worker_slot].tid = pthread_self();
-  shm_ptr[cur_worker_slot].static_req = 0;
-  shm_ptr[cur_worker_slot].dyanmic_req = 0;
-  shm_ptr[cur_worker_slot].total_req = 0;
-  //printf("worker stats: %lu, %d, %d, %d\n", shm_ptr[cur_worker_slot].tid, 
-  // shm_ptr[cur_worker_slot].static_req, shm_ptr[cur_worker_slot].dyanmic_req,
-  // shm_ptr[cur_worker_slot].total_req);
-  cur_worker_slot++;
+  
+  printf("Worker %lu created ", pthread_self());
+  for (int i = 0; i < threads; ++i) {
+    if (shm_ptr[i].tid == 0) {
+      shm_ptr[i].tid = pthread_self();
+      printf("on slot %d\n", i);
+      break;
+    }
+  }
 
+  cur_worker_slot++;
+  int is_static;
   while (1) {
     pthread_mutex_lock(&mu);
     // wait while no requests are in buffer
@@ -122,12 +123,42 @@ void *worker(void *arg) {
     }
     pthread_mutex_unlock(&mu);
 
+    pthread_mutex_lock(&mu);
     // handle connection async
     printf("worker %lu accepted connection %d\n", pthread_self(), connfd);
-    requestHandle(connfd);
+    is_static = requestHandle(connfd);
     Close(connfd);
     printf("handled connection %d\n", connfd);
+    // handle statistics
+    for (int i = 0; i < threads; ++i) {
+      if (pthread_self() == shm_ptr[i].tid) {
+        if (is_static == 1) {
+          shm_ptr[i].static_req++;
+        } else if (is_static == 0) {
+          shm_ptr[i].dynamic_req++;
+        }
+        shm_ptr[i].total_req++;
+        printf("stats for worker %d\n", i);
+        printf("total static: %d\n", shm_ptr[i].static_req);
+        printf("total dynamic: %d\n", shm_ptr[i].dynamic_req);
+        printf("total: %d\n", shm_ptr[i].total_req);
+        printf("--------total stats----------\n");
+        long unsigned tid;
+        int static_req, dynamic_req, total_req;
+        for (int i = 0; i < threads; ++i) {
+            tid = shm_ptr[i].tid;
+            static_req = shm_ptr[i].static_req;
+            dynamic_req = shm_ptr[i].dynamic_req;
+            total_req = shm_ptr[i].total_req;
+            printf("%lu : %d %d %d\n", tid, total_req, static_req, dynamic_req);
+        }
+        printf("-----------------------------\n");
 
+        break;
+      }
+    }
+    
+    pthread_mutex_unlock(&mu);
 
     // update buffers
     pthread_mutex_lock(&mu);
@@ -139,8 +170,7 @@ void *worker(void *arg) {
     pthread_cond_signal(&buff_not_full);
     pthread_mutex_unlock(&mu);
 
-    // handle statistics
-    //int is_static = requestHandle(connfd);
+    
   }
   return NULL;
 }
