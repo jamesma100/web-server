@@ -2,7 +2,7 @@
 #define _SHM_SLOT_H_
 
 typedef struct slot {
-    int tid;
+    long unsigned tid;
     int static_req;
     int dyanmic_req;
     int total_req;

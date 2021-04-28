@@ -34,7 +34,7 @@ slot_t *shm_ptr;
 int threads;
 int page_size;
 char *shm_name;
-// int cur_worker_slot = 0;
+int cur_worker_slot = 0;
 
 void sigint_handler(int signal) {
   printf("Captured signal SIGINT %d\n", signal);
@@ -92,7 +92,17 @@ int get_full() {
 }
 
 void *worker(void *arg) {
-  // printf("Worker %lu created\n", pthread_self());
+  printf("Worker %lu created\n", pthread_self());
+  printf("slot: %i\n",cur_worker_slot);
+  shm_ptr[cur_worker_slot].tid = pthread_self();
+  shm_ptr[cur_worker_slot].static_req = 0;
+  shm_ptr[cur_worker_slot].dyanmic_req = 0;
+  shm_ptr[cur_worker_slot].total_req = 0;
+  //printf("worker stats: %lu, %d, %d, %d\n", shm_ptr[cur_worker_slot].tid, 
+  // shm_ptr[cur_worker_slot].static_req, shm_ptr[cur_worker_slot].dyanmic_req,
+  // shm_ptr[cur_worker_slot].total_req);
+  cur_worker_slot++;
+
   while (1) {
     pthread_mutex_lock(&mu);
     // wait while no requests are in buffer
