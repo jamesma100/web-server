@@ -4,7 +4,7 @@
 typedef struct slot {
     long unsigned tid;
     int static_req;
-    int dyanmic_req;
+    int dynamic_req;
     int total_req;
 } slot_t;
 

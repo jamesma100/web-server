@@ -93,11 +93,11 @@ int get_full() {
 
 void *worker(void *arg) {
   
-  printf("Worker %lu created ", pthread_self());
+  // printf("Worker %lu created ", pthread_self());
   for (int i = 0; i < threads; ++i) {
     if (shm_ptr[i].tid == 0) {
       shm_ptr[i].tid = pthread_self();
-      printf("on slot %d\n", i);
+      // printf("on slot %d\n", i);
       break;
     }
   }
@@ -125,10 +125,10 @@ void *worker(void *arg) {
 
     pthread_mutex_lock(&mu);
     // handle connection async
-    printf("worker %lu accepted connection %d\n", pthread_self(), connfd);
+    // printf("worker %lu accepted connection %d\n", pthread_self(), connfd);
     is_static = requestHandle(connfd);
     Close(connfd);
-    printf("handled connection %d\n", connfd);
+    // printf("handled connection %d\n", connfd);
     // handle statistics
     for (int i = 0; i < threads; ++i) {
       if (pthread_self() == shm_ptr[i].tid) {
@@ -138,21 +138,21 @@ void *worker(void *arg) {
           shm_ptr[i].dynamic_req++;
         }
         shm_ptr[i].total_req++;
-        printf("stats for worker %d\n", i);
-        printf("total static: %d\n", shm_ptr[i].static_req);
-        printf("total dynamic: %d\n", shm_ptr[i].dynamic_req);
-        printf("total: %d\n", shm_ptr[i].total_req);
-        printf("--------total stats----------\n");
-        long unsigned tid;
-        int static_req, dynamic_req, total_req;
-        for (int i = 0; i < threads; ++i) {
-            tid = shm_ptr[i].tid;
-            static_req = shm_ptr[i].static_req;
-            dynamic_req = shm_ptr[i].dynamic_req;
-            total_req = shm_ptr[i].total_req;
-            printf("%lu : %d %d %d\n", tid, total_req, static_req, dynamic_req);
-        }
-        printf("-----------------------------\n");
+        // printf("stats for worker %d\n", i);
+        // printf("total static: %d\n", shm_ptr[i].static_req);
+        // printf("total dynamic: %d\n", shm_ptr[i].dynamic_req);
+        // printf("total: %d\n", shm_ptr[i].total_req);
+        // printf("--------total stats----------\n");
+        // long unsigned tid;
+        // int static_req, dynamic_req, total_req;
+        // for (int i = 0; i < threads; ++i) {
+        //     tid = shm_ptr[i].tid;
+        //     static_req = shm_ptr[i].static_req;
+        //     dynamic_req = shm_ptr[i].dynamic_req;
+        //     total_req = shm_ptr[i].total_req;
+        //     printf("%lu : %d %d %d\n", tid, total_req, static_req, dynamic_req);
+        // }
+        // printf("-----------------------------\n");
 
         break;
       }
@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
   struct sockaddr_in clientaddr;
 
   getargs(&port, &threads, &buff_len, &shm_name, argc, argv);
-  printf("args: %d, %d, %d, %s\n", port, threads, buff_len, shm_name);
+
   // check invalid arguments
   if (port <= 2000 || buff_len <= 0 || threads <= 0) {
     return 1;
@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
  
   // initalize buffer
   buffer = malloc(buff_len * sizeof(int));
-  // printf("main len is %d\n", buff_len);
+  
   for (int i = 0; i < buff_len; i++) {
     buffer[i] = -1;
   }
@@ -206,21 +206,19 @@ int main(int argc, char *argv[])
   
   // CS537 (Part B): Create & initialize the shared memory region...
   //
-  // initialize shared memory
+  // create shared memory
   page_size = getpagesize();
   int shm_fd = shm_open(shm_name, O_RDWR | O_CREAT, 0660);
   if (shm_fd < 0) {
     printf("shm_open exit with ret code -1\n");
     return 1;
   }
-  
+  // initialize shared memory & map to address space
   ftruncate(shm_fd, page_size);
   shm_ptr = mmap(NULL, page_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
-  
   if (shm_ptr == MAP_FAILED) {
     return 1;
   }
-  printf("shared mem created\n");
 
   // register signal handler
   signal(SIGINT, sigint_handler);
@@ -233,10 +231,6 @@ int main(int argc, char *argv[])
   pthread_t workers[threads];
   for (int i = 0; i < threads; i++) {
     pthread_create(&workers[i], NULL, worker, NULL);
-    // shm_ptr[i].tid = pthread_self();
-    // shm_ptr[i].static_req = 0;
-    // shm_ptr[i].dyanmic_req = 0;
-    // shm_ptr[i].total_req = 0;
   }
 
   listenfd = Open_listenfd(port);

@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
     char *shm_name = argv[1];
     int sleeptime_ms = atoi(argv[2]);
     int num_threads = atoi(argv[3]);
-    //printf("shm_name: %s, sleeptime_ms: %d, num_threads: %d\n", shm_name, sleeptime_ms, num_threads);
+ 
     if (sleeptime_ms < 0) {
         printf("error: sleeptime_ms\n");
         return 1;
@@ -24,15 +24,14 @@ int main(int argc, char *argv[]) {
         printf("error: num_threads\n");
         return 1;
     }
-    //printf("args: %s, %i, %i\n", shm_name, sleeptime_ms, num_threads);    
+
     int shm_fd = shm_open(shm_name, O_RDWR, 0660);
     if (shm_fd == -1) {
         printf("error: shared memory segment does not exist\n");
         return 1;
     }
     int page_size = getpagesize();
-    slot_t *shm_ptr = mmap(NULL, page_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
-    //printf("shm_ptr: %s\n", (char*)shm_ptr);   
+    slot_t *shm_ptr = mmap(NULL, page_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0); 
     
     struct timespec ts;
     ts.tv_sec = 0;
