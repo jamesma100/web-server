@@ -122,12 +122,13 @@ void *worker(void *arg) {
       is_empty = 1;
     }
     pthread_mutex_unlock(&mu);
-
-    pthread_mutex_lock(&mu);
-    // handle connection async
-    // printf("worker %lu accepted connection %d\n", pthread_self(), connfd);
     is_static = requestHandle(connfd);
     Close(connfd);
+    //pthread_mutex_lock(&mu);
+    // handle connection async
+    // printf("worker %lu accepted connection %d\n", pthread_self(), connfd);
+    
+    
     // printf("handled connection %d\n", connfd);
     // handle statistics
     for (int i = 0; i < threads; ++i) {
@@ -158,7 +159,7 @@ void *worker(void *arg) {
       }
     }
     
-    pthread_mutex_unlock(&mu);
+    //pthread_mutex_unlock(&mu);
 
     // update buffers
     pthread_mutex_lock(&mu);
