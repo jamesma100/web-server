@@ -94,6 +94,7 @@ int get_full() {
 void *worker(void *arg) {
   
   // printf("Worker %lu created ", pthread_self());
+  pthread_mutex_lock(&mu);
   for (int i = 0; i < threads; ++i) {
     if (shm_ptr[i].tid == 0) {
       shm_ptr[i].tid = pthread_self();
@@ -101,7 +102,7 @@ void *worker(void *arg) {
       break;
     }
   }
-
+  pthread_mutex_unlock(&mu);
   cur_worker_slot++;
   int is_static;
   while (1) {
